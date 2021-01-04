@@ -1,5 +1,5 @@
-const { setupOverlay } = require("regl-shader-error-overlay");
-setupOverlay();
+// const { setupOverlay } = require("regl-shader-error-overlay");
+// setupOverlay();
 
 let pixelRatio = Math.min(window.devicePixelRatio, 1.5);
 const regl = require("regl")({
@@ -11,7 +11,23 @@ const regl = require("regl")({
     // "WEBGL_debug_shaders"
   ],
 });
+let _viewportWidth = 1;
+let _viewportHeight = 1;
+function getColorAtPoint(x, y) {
+  var stored_pixels = undoStack[undoStack.length - 1];
 
+  let index = (_viewportWidth * (_viewportHeight - y) + x) * 4;
+  let r = stored_pixels[index];
+  let g = stored_pixels[index + 1];
+  let b = stored_pixels[index + 2];
+  let a = stored_pixels[index + 3];
+  let color = [r, g, b, a];
+  let value = 1;
+  if (color[0] > 10) {
+    value = -1;
+  }
+  return value;
+}
 let offscreenPointer = {
   texcoordX: -9,
   texcoordY: -9,
@@ -72,7 +88,8 @@ let { getPointers, processQueue } = setupHandlers(
   regl._gl.canvas,
   pixelRatio,
   pushState,
-  popState
+  popState,
+  getColorAtPoint
 );
 
 pointers = getPointers();
@@ -138,6 +155,7 @@ let drawTriangle = regl({
     t: ({ tick }) => tick,
 
     force: regl.prop("force"),
+    value: regl.prop("value"),
     point: (context, props) => [
       props.pointer.texcoordX,
       props.pointer.texcoordY,
@@ -170,14 +188,21 @@ let drawTriangle = regl({
 
 regl.frame(function ({ viewportWidth, viewportHeight }) {
   densityDoubleFBO.resize(viewportWidth, viewportHeight);
-
+  _viewportWidth = viewportWidth;
+  _viewportHeight = viewportHeight;
   do {
     pointers.forEach((pointer) => {
       if (!pointer.down) {
         return;
       }
       pointer.moved = false;
-      drawTriangle({ pointer, force: pointer.force || 0.5, pop: false });
+
+      drawTriangle({
+        pointer,
+        force: pointer.force || 0.5,
+        pop: false,
+        value: pointer.value || 0,
+      });
       pointer.prevTexcoordX = pointer.texcoordX;
       pointer.prevTexcoordY = pointer.texcoordY;
       densityDoubleFBO.swap();
@@ -188,9 +213,12 @@ regl.frame(function ({ viewportWidth, viewportHeight }) {
     pointer: offscreenPointer,
     force: 0.0,
     pop: doPop,
+    value: 1,
   });
   doPop = false;
-
+  if (undoStack.length == 0) {
+    pushState();
+  }
   densityDoubleFBO.swap();
 
   drawFboBlurred();

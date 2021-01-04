@@ -6,6 +6,7 @@ uniform vec2 point;
 uniform vec2 prevPoint;
 // uniform float aspectRatio;
 uniform float force;
+uniform float value;
 // uniform float radius;
 
 // uniform sampler2D webcam;
@@ -36,44 +37,24 @@ void main() {
   vec2 scale = vec2(aspectRatio, 1.0);
   vec2 vUv = uv * 0.5 + vec2(0.5);
 
-  float radius = (force * 0.8 + 0.3) / 300.;
   vec2 p = vUv - point.xy;
 
   p.x *= aspectRatio;
 
-  // vec3 splat = exp(-dot(p, p) / radius) * vec3(0.1);
 
   float seg = sdSegment(vUv * scale, point.xy * scale, prevPoint.xy * scale,
-                        0.05 * (0.1 + force * 0.4));
-  // seg = 0.001;
+                        0.05 * (0.2 + force * 0.5));
 
-  // seg = exp(-dot(seg, seg) / r/adius);
   seg = 1.0 - (200. * seg);
   seg = max(0., seg);
   vec3 splat = vec3(1.0) * seg;
-  // if (seg < 0.) {
-  // splat = vec3(1.0);
-  // }
-  //  * seg;
-  // exp(-dot(p, p) / radius) * vec3(0.1);
-  vec3 base = texture2D(backBuffer, vUv).xyz;
+  vec3 base = clamp(texture2D(backBuffer, vUv).xyz,0.,1.0);
 
-  vec3 drip = texture2D(backBuffer, vUv + vec2(0., pixel.y)).xyz;
-  vec3 below = texture2D(backBuffer, vUv - vec2(0., pixel.y)).xyz;
 
-  float n = 0.8 + noise(vec3(vUv * 500., t * 0.05)) * 0.2;
-  float dripmap = noise(vec3(vUv.xy * vec2(50.0, 1.0), t * 0.000));
+  float n = 0.8 + noise(vec3(vUv * 500., t * 0.5)) * 0.3;
 
-  float fn = 1.0;
-  // if (length(base) < 0.37) {
-  // base *= 0.4;
-  // }
-  // fn = 1.0;
-  float splatf = luma(splat);
-  float basef = luma(base);
-  float fill = (1.0 - luma(base)) * luma(splat) * n * 0.7;
-  gl_FragColor = vec4(base * fn + fill * vec3(1.0), 1.0);
-  // gl_FragColor =
-  // vec4((vec3(1.0) - base) * splat + ((vec3(1.0) - splat) * base), 1.0);
-  // gl_FragColor = vec4(base + vec3(1.0) * seg, 1.0);
+
+  float fill =  (1.0 - luma(base*value)) * luma(splat) * n * 0.9;
+  gl_FragColor = vec4(base + fill * vec3(value), 1.0);
+ 
 }
